@@ -8,7 +8,9 @@ compliance logging for internal web applications. It replaces an unmaintained in
 
 ## Status
 
-**Phase 0 — repository setup.** No application code yet. See [`docs/roadmap.md`](docs/roadmap.md).
+**Phase 2 — GitOps config, code complete; not yet deployed.** The proxy runs, routes come from
+`config/routes/`, the validator gates PRs, and the Helm chart renders. Authentication (Phase 3) is
+next. See [`docs/roadmap.md`](docs/roadmap.md).
 
 ## I want to…
 
@@ -58,7 +60,8 @@ Requires the .NET 10 SDK (see [`global.json`](global.json)) and Docker for integ
 ```bash
 dotnet build
 dotnet test
-dotnet run --project tools/ConfigValidator -- config/routes
+dotnet run --project tools/ConfigValidator          # validate config/routes against every environment
+dotnet run --project src/Proxy.Host                 # run locally against config/environments/local.yaml
 ```
 
 ## License

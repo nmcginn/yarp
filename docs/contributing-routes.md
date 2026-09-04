@@ -59,10 +59,15 @@ Full field reference: [`configuration.md`](configuration.md).
 ## 3. Validate locally (optional but faster)
 
 ```bash
-dotnet run --project tools/ConfigValidator -- config/routes
+dotnet run --project tools/ConfigValidator
 ```
 
-This is the exact check CI runs, so a green run locally means a green check on the PR.
+This is the exact check CI runs, so a green run locally means a green check on the PR. Errors name
+the file and line:
+
+```
+config/routes/my-app.yaml:9: unknown routes[0].authorizationPolicy 'authentcated'; expected one of: authenticated, anonymous
+```
 
 ## 4. Open a pull request
 
@@ -73,6 +78,10 @@ Two things must happen before merge:
 
 - the **config validation check** passes
 - the **platform team** approves (CODEOWNERS requires this on `config/routes/`)
+
+> **Until authentication ships (Phase 3), only `authorizationPolicy: anonymous` routes can be
+> deployed.** The proxy refuses to start with an authenticated route rather than serve it without
+> authentication. Ask the platform team where the rollout stands before onboarding.
 
 ## 5. After merge
 

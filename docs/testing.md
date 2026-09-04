@@ -20,14 +20,19 @@ was thrown.
 
 ## Integration tests
 
-`tests/Proxy.Integration.Tests`. `WebApplicationFactory` + Testcontainers for Redis.
+`tests/Proxy.Integration.Tests`. The tests start the real composition root (`ProxyProcess`) on
+loopback with random ports and talk to it over HTTP, against a stub upstream that records what it
+receives. `WebApplicationFactory` assumes a single host, and the proxy deliberately runs three
+([ADR 0006](decisions/0006-one-process-three-hosts.md)); running the real thing also means the port
+topology of spec §2 is under test. Redis arrives with Testcontainers in Phase 3.
 
 | Test | What it protects |
 |------|------------------|
 | Full OIDC login flow against a test IdP (Keycloak container or stub) | The auth stack works end to end |
 | Session survives a simulated pod restart when the key ring is shared | Spec §5.2.1 — and the §4.3 assumption that config changes are cheap |
 | Session does not leak between distinct users | The obvious catastrophe |
-| **Identity header injection is stripped** — every header, authenticated and anonymous routes, verified at a stub upstream | Spec §6.2. **This test is the point of that section.** |
+| **Identity header injection is stripped** — every header, authenticated and anonymous routes, verified at a stub upstream | Spec §6.2. **This test is the point of that section.** Anonymous half exists; authenticated half lands with Phase 3. |
+| Proxy routes answer only on 8080; health only on 8082 | Spec §2, security control 7 |
 | Invalid config causes startup failure and readiness failure, not a partially-loaded route table | Spec §4.4 |
 | Redis unavailable → sessions fail closed, anonymous routes keep working | The documented degradation mode |
 | Destination allowlist rejects an external address, both in the validator CLI and at startup | Spec §4.4 — SSRF control |

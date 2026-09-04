@@ -5,7 +5,11 @@ half-integrated branch. Do not start a phase's work while the previous phase is 
 
 **Status legend:** `[ ]` not started · `[~]` in progress · `[x]` done
 
-Current phase: **Phase 0 — repository setup** (in progress)
+Current phase: **Phase 2 — GitOps config** (code complete; first dev deployment pending)
+
+Phases 1 and 2 were built together because nothing in Phase 1 was deployable without a cluster and
+Phase 2 replaces Phase 1's hardcoded route anyway. Both remain undeployed until a dev cluster,
+image registry, and ALB exist — those items are the open ones below.
 
 ---
 
@@ -19,7 +23,7 @@ Not in the spec; the groundwork the spec assumes exists.
 - [x] `CODEOWNERS`, PR templates (general + route request), route-request issue template
 - [x] `config/` skeleton with environment files and a copy-paste route template
 - [x] CI workflow skeleton (build, test, format, config validation — guarded until projects exist)
-- [ ] Solution and empty project skeleton (`dotnet new`), once an SDK is available
+- [x] Solution and project skeleton (`Proxy.slnx`, central package management)
 
 **Exit:** a contributor can clone, read `CLAUDE.md`, and know where their change goes.
 
@@ -29,13 +33,16 @@ Not in the spec; the groundwork the spec assumes exists.
 
 Spec §2, §3, §8.3, §10.
 
-- [ ] `Proxy.Host` with three Kestrel listeners (8080 data plane, 8081 status, 8082 ops)
-- [ ] YARP wired up with a single hardcoded route
-- [ ] `/health/live` (no dependency checks) and `/health/ready` on 8082
-- [ ] Serilog JSON to stdout
-- [ ] Dockerfile, container image published by CI
-- [ ] Helm chart: 3 replicas, `maxUnavailable: 0`, PDB `minAvailable: 2`, ClusterIP service for 8081
-- [ ] Deployed to dev and proxying real traffic to one upstream
+- [x] `Proxy.Host` with three Kestrel listeners (8080 data plane, 8081 status, 8082 ops) — as three
+      hosts in one process, [ADR 0006](decisions/0006-one-process-three-hosts.md)
+- [x] YARP wired up — routes come from config (Phase 2) rather than a hardcoded route
+- [x] `/health/live` (no dependency checks) and `/health/ready` on 8082
+- [x] Serilog JSON to stdout, with a correlation id on every request (spec §6.1 step 1)
+- [x] Dockerfile; `publish-image.yml` pushes to GHCR on merge (runs on first merge to `master`)
+- [x] Helm chart: 3 replicas, `maxUnavailable: 0`, PDB `minAvailable: 2`, ClusterIP service for 8081;
+      `deploy/helm/verify-render.py` checks the rendered manifests in CI
+- [ ] Deployed to dev and proxying real traffic to one upstream — needs a cluster, `DEPLOY_ENABLED`,
+      and the secrets named in `deploy.yml`
 
 **No auth in this phase.**
 
@@ -51,27 +58,34 @@ just the chart values.
 
 Spec §4, §10.
 
-- [ ] `Proxy.Config`: internal route/cluster model, YAML parsing (YamlDotNet), file merge
-- [ ] Validation rules (all of spec §4.4), each with a broken-fixture unit test:
-  - [ ] duplicate `routeId` / `clusterId` across files
-  - [ ] route referencing a nonexistent `clusterId`
-  - [ ] two routes matching the same host and path precedence
-  - [ ] **destination outside the internal allowlist** (security control)
-  - [ ] malformed host patterns, unparseable durations, unknown enum values
-  - [ ] `caching.enabled: true` on a non-anonymous route
-- [ ] Human-readable validator errors with file name and line number
-- [ ] Translation to YARP types, handed to `InMemoryConfigProvider`
-- [ ] `tools/ConfigValidator` CLI wrapping the same code
-- [ ] Required CI check on every PR touching `config/`
-- [ ] CI renders `config/routes/*.yaml` into a ConfigMap manifest
-- [ ] Helm `checksum/routes` pod annotation triggering rolling restart
-- [ ] Startup validation is fatal; readiness fails on invalid config
+- [x] `Proxy.Config`: internal route/cluster model, YAML parsing (YamlDotNet), file merge
+- [x] Validation rules (all of spec §4.4), each with a broken-fixture unit test:
+  - [x] duplicate `routeId` / `clusterId` across files
+  - [x] route referencing a nonexistent `clusterId`
+  - [x] two routes matching the same host and path precedence
+  - [x] **destination outside the internal allowlist** (security control)
+  - [x] malformed host patterns, unparseable durations, unknown enum values
+  - [x] `caching.enabled: true` on a non-anonymous route
+- [x] Human-readable validator errors with file name and line number; every error, not just the first
+- [x] Translation to YARP types, handed to `InMemoryConfigProvider`
+- [x] `tools/ConfigValidator` CLI wrapping the same code (validates against every environment file)
+- [~] Required CI check on every PR touching `config/` — `validate-config.yml` runs; making it
+      *required* is a branch-protection setting on the repository
+- [x] CI renders `config/routes/*.yaml` into a ConfigMap manifest (`stage-config.sh` + chart)
+- [x] Helm `checksum/routes` (and `checksum/environment`) pod annotation triggering rolling restart
+- [x] Startup validation is fatal; readiness fails on invalid config (integration-tested)
+- [ ] **Demonstrate** that a bad ConfigMap stalls the rollout with old pods still serving — needs dev
 
 **Exit:** a route lands in dev by merging a PR. **Demonstrate that a bad ConfigMap stalls the
 rollout with old pods still serving.**
 
 **Depends on:** nothing blocking. The destination allowlist values need a decision from the
-platform/network owners — track in [open questions](open-questions.md).
+platform/network owners — track in [open questions](open-questions.md). `.svc.cluster.local` is the
+placeholder in `dev.yaml` and `prod.yaml`.
+
+**Note:** until Phase 3, the host refuses to start if any route is `authenticated` — an
+authenticated route must never be served anonymously. Only anonymous routes can be onboarded in dev
+before then.
 
 ---
 
@@ -101,12 +115,14 @@ before starting.
 
 Spec §6.2, §8.1, §8.2.
 
-- [ ] Request transform with **unconditional identity-header stripping** before any conditional
-      logic
+- [x] Request transform with **unconditional identity-header stripping** before any conditional
+      logic — pulled forward into Phase 2: the incumbent sets these same headers, so an upstream
+      migrated before Phase 4 could otherwise be spoofed through an anonymous route
 - [ ] Header writing behind an interface so signed-assertion mode can be added per route later
       (do **not** implement signed assertions)
-- [ ] Integration test: client sends every identity header on authenticated and anonymous routes;
-      upstream never observes a client-supplied value
+- [~] Integration test: client sends every identity header on authenticated and anonymous routes;
+      upstream never observes a client-supplied value — anonymous half exists; authenticated half
+      needs Phase 3
 - [ ] Audit events to CloudWatch Logs group `/proxy/audit` via `Serilog.Sinks.AwsCloudWatch`
 - [ ] One log stream per pod, named by pod name
 - [ ] Batched writes, explicitly bounded queue, `proxy_audit_events_dropped_total` metric + alarm
