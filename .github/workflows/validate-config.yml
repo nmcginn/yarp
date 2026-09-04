@@ -1,0 +1,46 @@
+name: Validate config
+
+# Required check on every PR touching config/ (spec §4.4).
+#
+# This runs tools/ConfigValidator — the exact same validation code the proxy runs at startup.
+# Do NOT reimplement validation here as a script: two implementations drift, and the one that
+# drifts is the one enforcing the destination allowlist.
+#
+# Until Phase 2 lands, the validator does not exist and this job reports a notice instead. Make
+# this a required branch protection check as soon as it does.
+
+on:
+  push:
+    branches: [master, main]
+    paths: ["config/**", "src/Proxy.Config/**", "tools/ConfigValidator/**"]
+  pull_request:
+    paths: ["config/**", "src/Proxy.Config/**", "tools/ConfigValidator/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate route configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for the validator
+        id: validator
+        run: |
+          if [ -d tools/ConfigValidator ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tools/ConfigValidator does not exist yet (Phase 2). Route config is NOT being validated."
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.validator.outputs.exists == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: Validate config/routes
+        if: steps.validator.outputs.exists == 'true'
+        run: dotnet run --project tools/ConfigValidator --configuration Release -- config/routes

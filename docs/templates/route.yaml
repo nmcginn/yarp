@@ -1,0 +1,68 @@
+# Route configuration template.
+#
+# Copy to config/routes/<your-app>.yaml and edit. Delete the comments you do not need — the file
+# is the review artifact, so keep whatever helps a reviewer understand your route.
+#
+#   cp docs/templates/route.yaml config/routes/my-app.yaml
+#
+# Validate before opening a PR (this is the exact check CI runs):
+#
+#   dotnet run --project tools/ConfigValidator -- config/routes
+#
+# Field reference: docs/configuration.md
+# Guide:           docs/contributing-routes.md
+
+# Logical application name. Should match the file name.
+application: my-app
+
+# Owning team. Informational, but it is what someone looks up when your route misbehaves.
+owner: my-team
+
+routes:
+  - # Unique across every file in config/routes/. Appears in audit events and metrics.
+    routeId: my-app
+
+    match:
+      # Hostnames your users will visit.
+      hosts: [my-app.corp.example.com]
+      # YARP path pattern. "{**catch-all}" sends everything under the host to this route.
+      path: "{**catch-all}"
+
+    # Must reference a clusterId defined below.
+    clusterId: my-app-svc
+
+    # authenticated | anonymous
+    authorizationPolicy: authenticated
+
+    # Empty or absent means any authenticated user may access the route.
+    # List group names to restrict further. Ignored on anonymous routes.
+    requiredGroups: []
+
+    # Which identity headers to send upstream.
+    # userId -> X-Auth-User-Id, email -> X-Auth-Email,
+    # groups -> X-Auth-Groups, displayName -> X-Auth-Display-Name
+    identityHeaders: [userId, email, groups, displayName]
+
+    caching:
+      # Permitted only when authorizationPolicy is "anonymous".
+      # The validator rejects caching on authenticated routes: cross-user cache leakage.
+      enabled: false
+
+    # standard | detailed
+    auditLevel: standard
+
+clusters:
+  - clusterId: my-app-svc
+
+    destinations:
+      primary:
+        # Must be an internal address inside the allowlist — enforced by the validator in CI and
+        # again at startup. External addresses are rejected (SSRF control, spec §4.4).
+        address: http://my-app.my-namespace.svc.cluster.local:8080/
+
+    healthCheck:
+      active:
+        enabled: true
+        path: /health
+        # HH:MM:SS
+        interval: 00:00:10
