@@ -1,0 +1,15 @@
+# The environment file (config/environments/<env>.yaml) carrying the destination allowlist and,
+# from Phase 3, IdP and Redis settings. Staged by deploy/helm/stage-config.sh.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "proxy.fullname" . }}-environment
+  labels:
+    {{- include "proxy.labels" . | nindent 4 }}
+data:
+{{- $env := .Files.Get "config/environment.yaml" }}
+{{- if not $env }}
+{{- fail "no environment file staged: run deploy/helm/stage-config.sh <environment> before rendering" }}
+{{- end }}
+  environment.yaml: |
+{{ $env | indent 4 }}

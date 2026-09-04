@@ -1,0 +1,4 @@
+environment: test
+destinationAllowlist:
+  dnsSuffixes: [.svc.cluster.local]
+  cidrs: [10.0.0.0/33]

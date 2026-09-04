@@ -41,7 +41,17 @@ mix of SHAs.
 taking the service down.
 
 **Action:** read the startup logs of a failing pod; the validator names the file and line.
-`git revert` the offending PR and merge. _Detail TBD (Phase 2)._
+
+```bash
+kubectl -n proxy rollout status deploy/proxy-corp-identity-proxy     # shows the stalled rollout
+kubectl -n proxy get pods                                              # new pods in CrashLoopBackOff, old pods Running
+kubectl -n proxy logs <new-pod> | grep '"@l":"Fatal"'
+# {"@m":"Invalid configuration at /app/config/routes/hr-portal.yaml:14: destination 'primary' of cluster ... points outside the internal allowlist: ..."}
+```
+
+Then `git revert` the offending PR and merge; the next rollout replaces the crashing pods. The same
+error appears in the failed *Validate config* check on the PR that introduced it, so reaching this
+runbook entry means a required check was bypassed — fix that too.
 
 ### Sporadic 502s from upstreams
 

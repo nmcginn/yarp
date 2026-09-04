@@ -8,6 +8,12 @@ jobs.
 **Application logs** → stdout → cluster log pipeline → `/aws/eks/...`. Serilog, JSON formatted.
 Operational concern, short retention.
 
+The format is Serilog's compact JSON: `@t` timestamp, `@l` level (absent for Information), `@m`
+rendered message, then the event's properties as top-level fields. Every request log line carries
+`CorrelationId`, `RequestPath`, `StatusCode`, and `Elapsed`. Minimum level is `Information`, with
+`Microsoft.AspNetCore` at `Warning`; set `PROXY_Logging__MinimumLevel` (Helm `logging.minimumLevel`)
+to `Debug` when a pod needs a closer look.
+
 **Compliance audit events** → CloudWatch Logs, dedicated log group `/proxy/audit`, written directly
 via `Serilog.Sinks.AwsCloudWatch`. A separate group so retention and IAM read access are controlled
 independently of application logs.

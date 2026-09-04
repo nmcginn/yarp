@@ -28,12 +28,12 @@ disagree, the spec wins — and the disagreement is a bug in this file, so fix i
 
 ```
 src/
-  Proxy.Host/            Composition root: Kestrel listeners, DI wiring, Program.cs
-  Proxy.Core/            YARP pipeline, transforms, config translation
-  Proxy.Auth/            OIDC handler config, Redis ticket store, claims mapping
-  Proxy.Config/          Route schema, YAML parsing, validation
-  Proxy.Status/          Read-only status endpoints + Razor Pages
-  Proxy.Observability/   Structured logging, audit events, metrics
+  Proxy.Host/            Composition root: the three hosts (ProxyProcess), settings, Program.cs
+  Proxy.Core/            YARP pipeline and transforms (identity header strip, correlation id)
+  Proxy.Auth/            OIDC handler config, Redis ticket store, claims mapping (Phase 3)
+  Proxy.Config/          Route schema, YAML parsing, validation, translation to YARP types
+  Proxy.Status/          Read-only status endpoints + Razor Pages (Phase 5)
+  Proxy.Observability/   Structured logging, health endpoints; audit events and metrics (Phase 4)
 tools/
   ConfigValidator/       CLI wrapper over Proxy.Config, run by CI
 config/
@@ -54,6 +54,12 @@ docs/                    Spec, roadmap, ADRs, runbook, contribution guides
 - `Proxy.Core` must **not** reference `Proxy.Status`.
 - `tools/ConfigValidator` wraps `Proxy.Config` — CI must run the exact same validation code the
   proxy runs at startup. Never reimplement validation in a script.
+- NuGet versions live only in `Directory.Packages.props` (central package management).
+
+**Process shape:** one process, three `WebApplication` hosts — one per port — built by
+`ProxyProcess` in `Proxy.Host` ([ADR 0006](docs/decisions/0006-one-process-three-hosts.md)). YARP is
+registered only in the data-plane host; health checks only in the ops host. Do not merge them into
+one host with port-based branching: that is the footgun the ADR exists to avoid.
 
 ## Ports
 
@@ -130,17 +136,23 @@ Several decisions are still open and some of them block specific phases — see
 
 ## Common commands
 
-The .NET SDK is not yet vendored into CI containers or this repo's tooling; these are the commands
-as they will exist from Phase 1 onward.
+Requires the .NET 10 SDK (`global.json`). Run from the repository root.
 
 ```bash
 dotnet build                                     # build everything
-dotnet test                                      # all tests
+dotnet test                                      # all tests (integration tests bind loopback ports)
 dotnet test tests/Proxy.Config.Tests             # one project
 dotnet format --verify-no-changes                # style gate (as CI runs it)
-dotnet run --project tools/ConfigValidator -- config/routes   # validate route config
-dotnet run --project src/Proxy.Host               # run locally
+dotnet run --project tools/ConfigValidator       # validate config/routes against every environment file
+dotnet run --project src/Proxy.Host              # run locally (launchSettings: config/environments/local.yaml)
+
+deploy/helm/stage-config.sh dev                  # copy config/ into the chart
+helm template proxy deploy/helm/proxy | deploy/helm/verify-render.py   # render + check invariants
 ```
+
+Until Phase 3 there is no authentication: the host refuses to start if any route is
+`authorizationPolicy: authenticated` (see `ProxyProcess.Create`). Remove that guard when Phase 3
+registers the authentication scheme — and not before.
 
 ## Things not to build
 

@@ -1,0 +1,34 @@
+# Data plane. The only Service the ALB may target (spec §2).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "proxy.fullname" . }}
+  labels:
+    {{- include "proxy.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: data-plane
+      port: {{ .Values.service.port }}
+      targetPort: data-plane
+      protocol: TCP
+  selector:
+    {{- include "proxy.selectorLabels" . | nindent 4 }}
+---
+# Status UI. Internal ClusterIP only — never on the public ALB target group (security control 7).
+# Reach it with `kubectl port-forward svc/{{ include "proxy.fullname" . }}-status 8081`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "proxy.fullname" . }}-status
+  labels:
+    {{- include "proxy.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: status
+      port: {{ .Values.statusService.port }}
+      targetPort: status
+      protocol: TCP
+  selector:
+    {{- include "proxy.selectorLabels" . | nindent 4 }}

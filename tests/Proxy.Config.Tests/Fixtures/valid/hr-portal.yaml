@@ -1,0 +1,25 @@
+application: hr-portal
+owner: hr-platform-team
+routes:
+  - routeId: hr-portal
+    match:
+      hosts: [hr.corp.example.com]
+      path: "{**catch-all}"
+    clusterId: hr-portal-svc
+    authorizationPolicy: authenticated
+    requiredGroups: [hr-users, hr-admins]
+    identityHeaders: [userId, email, groups, displayName]
+    caching:
+      enabled: false
+    auditLevel: detailed
+
+clusters:
+  - clusterId: hr-portal-svc
+    destinations:
+      primary:
+        address: http://hr-portal.hr.svc.cluster.local:8080/
+    healthCheck:
+      active:
+        enabled: true
+        path: /health
+        interval: 00:00:10

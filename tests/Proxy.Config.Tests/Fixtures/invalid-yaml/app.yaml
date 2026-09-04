@@ -1,0 +1,7 @@
+application: app
+owner: team
+routes:
+  - routeId: app
+    match:
+      hosts: [app.corp.example.com
+      path: "{**catch-all}"

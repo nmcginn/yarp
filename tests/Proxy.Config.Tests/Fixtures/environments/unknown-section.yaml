@@ -1,0 +1,5 @@
+environment: test
+destinationAllowlist:
+  dnsSuffixes: [.svc.cluster.local]
+redis:
+  configuration: somewhere:6379

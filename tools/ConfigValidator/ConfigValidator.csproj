@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CLI wrapper over Proxy.Config, run by CI on every PR touching config/ (spec §4.4).
+    It contains no validation logic of its own — that would drift from what the proxy runs at
+    startup, and the copy that drifts is the one enforcing the destination allowlist.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>ConfigValidator</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Proxy.Config/Proxy.Config.csproj" />
+  </ItemGroup>
+
+</Project>

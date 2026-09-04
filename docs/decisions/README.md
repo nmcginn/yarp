@@ -15,6 +15,7 @@ Numbered sequentially. Copy [`0000-template.md`](0000-template.md).
 | [0003](0003-direct-cloudwatch-audit-sink.md) | Audit events written directly to CloudWatch Logs | Accepted (spec) |
 | [0004](0004-server-side-sessions.md) | Session state server-side in Redis via `ITicketStore` | Accepted (spec) |
 | [0005](0005-constrained-route-schema.md) | Constrained route schema, not raw YARP config | Accepted (spec) |
+| [0006](0006-one-process-three-hosts.md) | One process, three ASP.NET Core hosts — one per listener | Accepted |
 
 "Accepted (spec)" means the decision was made in [`../spec.md`](../spec.md) and is recorded here for
 discoverability. Reversing one is a spec change, not a refactor.

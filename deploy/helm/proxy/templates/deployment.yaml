@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "proxy.fullname" . }}
+  labels:
+    {{- include "proxy.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  # Rolling updates with maxUnavailable 0 (spec §10). Combined with fatal startup validation, a bad
+  # ConfigMap stalls the rollout with old pods still serving.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      {{- include "proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "proxy.selectorLabels" . | nindent 8 }}
+      annotations:
+        # A config change is a rolling restart, not a hot reload (spec §4.3, ADR 0002).
+        checksum/routes: {{ include (print $.Template.BasePath "/routes-configmap.yaml") . | sha256sum | quote }}
+        checksum/environment: {{ include (print $.Template.BasePath "/environment-configmap.yaml") . | sha256sum | quote }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "proxy.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: proxy
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: data-plane
+              containerPort: 8080
+              protocol: TCP
+            - name: status
+              containerPort: 8081
+              protocol: TCP
+            - name: ops
+              containerPort: 8082
+              protocol: TCP
+          env:
+            - name: PROXY_Config__RoutesDirectory
+              value: /app/config/routes
+            - name: PROXY_Config__EnvironmentFile
+              value: /app/config/environment/environment.yaml
+            - name: PROXY_Logging__MinimumLevel
+              value: {{ .Values.logging.minimumLevel | quote }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          # Liveness never checks dependencies (spec §8.3): a Redis blip must not become a restart storm.
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: ops
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness gates the rollout. Invalid config never reaches "listening", so it never passes.
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: ops
+            periodSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: ops
+            periodSeconds: 2
+            failureThreshold: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: routes
+              mountPath: /app/config/routes
+              readOnly: true
+            - name: environment
+              mountPath: /app/config/environment
+              readOnly: true
+      volumes:
+        - name: routes
+          configMap:
+            name: {{ include "proxy.fullname" . }}-routes
+        - name: environment
+          configMap:
+            name: {{ include "proxy.fullname" . }}-environment

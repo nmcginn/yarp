@@ -1,0 +1,16 @@
+# Route configuration (spec §4.3): every config/routes/*.yaml from the repository, staged into the
+# chart by deploy/helm/stage-config.sh, mounted at /app/config/routes. The Deployment carries a
+# checksum of this rendered manifest, so a config-only change still rolls the pods (ADR 0002).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "proxy.fullname" . }}-routes
+  labels:
+    {{- include "proxy.labels" . | nindent 4 }}
+data:
+{{- /* Zero route files is legitimate (nothing onboarded yet); a missing environment file is not,
+       and environment-configmap.yaml fails the render in that case. */}}
+{{- range $path, $_ := .Files.Glob "config/routes/*.yaml" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

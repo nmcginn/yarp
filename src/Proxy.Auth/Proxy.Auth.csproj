@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Proxy.Auth</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Phase 3: OIDC handler configuration, Redis ticket store, claims mapping (spec §5). -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

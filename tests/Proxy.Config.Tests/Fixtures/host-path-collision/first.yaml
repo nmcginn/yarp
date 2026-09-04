@@ -1,0 +1,14 @@
+application: first
+owner: team
+routes:
+  - routeId: first
+    match:
+      hosts: [shared.corp.example.com]
+      path: "/api/{id}"
+    clusterId: first-svc
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: first-svc
+    destinations:
+      primary:
+        address: http://first.first.svc.cluster.local/

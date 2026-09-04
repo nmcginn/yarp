@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Proxy.Host": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "PROXY_Config__RoutesDirectory": "../../config/routes",
+        "PROXY_Config__EnvironmentFile": "../../config/environments/local.yaml"
+      }
+    }
+  }
+}

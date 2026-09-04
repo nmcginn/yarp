@@ -1,0 +1,17 @@
+# Local development settings for `dotnet run --project src/Proxy.Host` on a workstation.
+#
+# This file is never deployed. It exists so a developer can point a route at a service on their own
+# machine; the deployed environments (dev.yaml, prod.yaml) allow cluster-internal addresses only.
+
+environment: local
+
+# Security control (spec §4.4): cluster destination addresses must fall inside this allowlist.
+# An entry starting with '.' is a suffix match; an entry without one is an exact host name.
+destinationAllowlist:
+  dnsSuffixes:
+    - .svc.cluster.local
+    - localhost
+    - .localhost
+  cidrs:
+    - 127.0.0.0/8
+    - ::1/128

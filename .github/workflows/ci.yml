@@ -1,10 +1,6 @@
 name: CI
 
-# Build, test, and style gate.
-#
-# The repository is in Phase 0: src/ and tests/ do not exist yet. Each step is guarded so the
-# workflow is green on a docs-only repo and starts doing real work the moment Phase 1 lands.
-# Remove the guards once the solution exists.
+# Build, test, style gate, and Helm chart verification on every push and pull request.
 
 on:
   push:
@@ -21,41 +17,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for a solution
-        id: solution
-        run: |
-          if ls *.sln *.slnx >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No solution yet (Phase 0). Skipping build and test."
-          fi
-
       - uses: actions/setup-dotnet@v4
-        if: steps.solution.outputs.exists == 'true'
         with:
           global-json-file: global.json
 
       - name: Restore
-        if: steps.solution.outputs.exists == 'true'
         run: dotnet restore
 
       - name: Build
-        if: steps.solution.outputs.exists == 'true'
         run: dotnet build --no-restore --configuration Release
 
       - name: Format check
-        if: steps.solution.outputs.exists == 'true'
         run: dotnet format --no-restore --verify-no-changes
 
-      # Integration tests use Testcontainers for Redis; ubuntu-latest runners provide Docker.
+      # Integration tests start real Kestrel listeners on loopback. Redis via Testcontainers arrives
+      # in Phase 3; ubuntu-latest runners provide Docker for it.
       - name: Test
-        if: steps.solution.outputs.exists == 'true'
         run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=results.trx"
 
       - uses: actions/upload-artifact@v4
-        if: always() && steps.solution.outputs.exists == 'true'
+        if: always()
         with:
           name: test-results
           path: "**/TestResults/*.trx"
           if-no-files-found: ignore
+
+  helm:
+    name: Helm chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint
+        run: helm lint deploy/helm/proxy
+
+      # Render for each deployed environment and check the manifests, not the values (roadmap
+      # Phase 1 "watch for": port 8081 must never be in the ALB target group).
+      - name: Render and verify (dev)
+        run: |
+          deploy/helm/stage-config.sh dev
+          helm template proxy deploy/helm/proxy --set image.tag=${{ github.sha }} \
+            --set ingress.enabled=true --set 'ingress.hosts[0]=*.dev.corp.example.com' \
+            | python3 deploy/helm/verify-render.py
+
+      - name: Render and verify (prod)
+        run: |
+          deploy/helm/stage-config.sh prod
+          helm template proxy deploy/helm/proxy --set image.tag=${{ github.sha }} \
+            --set ingress.enabled=true --set 'ingress.hosts[0]=*.corp.example.com' \
+            | python3 deploy/helm/verify-render.py

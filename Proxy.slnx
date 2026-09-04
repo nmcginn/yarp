@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Proxy.Auth/Proxy.Auth.csproj" />
+    <Project Path="src/Proxy.Config/Proxy.Config.csproj" />
+    <Project Path="src/Proxy.Core/Proxy.Core.csproj" />
+    <Project Path="src/Proxy.Host/Proxy.Host.csproj" />
+    <Project Path="src/Proxy.Observability/Proxy.Observability.csproj" />
+    <Project Path="src/Proxy.Status/Proxy.Status.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Proxy.Config.Tests/Proxy.Config.Tests.csproj" />
+    <Project Path="tests/Proxy.Core.Tests/Proxy.Core.Tests.csproj" />
+    <Project Path="tests/Proxy.Integration.Tests/Proxy.Integration.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ConfigValidator/ConfigValidator.csproj" />
+  </Folder>
+</Solution>

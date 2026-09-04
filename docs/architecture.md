@@ -23,6 +23,10 @@ One container image, one Kubernetes Deployment, three Kestrel listeners.
 Port 8081 must never be attached to the public ALB target group. It is protected by network
 topology first, authentication second.
 
+Inside the process, each listener is its own ASP.NET Core host with its own pipeline
+([ADR 0006](decisions/0006-one-process-three-hosts.md)): YARP exists only in the data-plane host,
+health checks only in the ops host, so an endpoint cannot be reached on a port it was not mapped on.
+
 ## Request path (port 8080)
 
 Middleware order is deliberate; changing it changes the security properties.
