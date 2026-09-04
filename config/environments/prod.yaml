@@ -1,0 +1,45 @@
+# Production environment settings.
+#
+# This file holds environment-specific settings only. Route definitions live in config/routes/ and
+# are identical across environments except where hostnames differ.
+#
+# Values below are placeholders filled in as each phase lands. Secrets are NOT stored here — they
+# come from IRSA-scoped AWS access and Kubernetes secrets.
+
+environment: prod
+
+# Security control (spec §4.4): cluster destination addresses must fall inside this allowlist.
+# Enforced by tools/ConfigValidator in CI and again at application startup.
+destinationAllowlist:
+  dnsSuffixes:
+    - .svc.cluster.local
+  cidrs: []
+
+# Phase 3. OIDC / cookie authentication.
+authentication:
+  # authority: https://idp.corp.example.com/realms/corp
+  # clientId: corp-identity-proxy
+  # Cookie domain. Assumes a shared parent domain (spec §5.2.3, open question 1).
+  # cookieDomain: .corp.example.com
+  # dataProtection:
+  #   applicationName: corp-identity-proxy      # must be identical across ALL pods
+  #   s3Bucket: corp-identity-proxy-dp-prod
+  #   kmsKeyArn: arn:aws:kms:...
+
+# Phase 3. Session ticket store and output cache.
+# redis:
+#   configuration: proxy-prod.abc123.ng.0001.use1.cache.amazonaws.com:6379
+
+# Phase 4. Compliance audit sink (spec §8.1).
+# audit:
+#   logGroup: /proxy/audit
+#   # Log stream name is the pod name — one stream per pod, never shared.
+#   queueCapacity: 10000
+
+# Phase 5. Status UI access (port 8081).
+# status:
+#   adminGroup: platform-team
+
+# Phase 6. Must be below the shortest upstream keepalive timeout (spec §6.4).
+# upstream:
+#   pooledConnectionIdleTimeout: 00:00:30

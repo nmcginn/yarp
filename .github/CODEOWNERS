@@ -1,0 +1,22 @@
+# Every PR touching route configuration requires platform team review.
+# This is the enforcement half of the GitOps model (spec §4.1) — CI validation catches malformed
+# config, CODEOWNERS catches config that is valid but wrong.
+#
+# Replace @platform-team with the real GitHub team before this repo takes real traffic.
+
+# Route configuration and environment settings.
+/config/                        @platform-team
+
+# Security controls and the decisions behind them.
+/docs/security-controls.md      @platform-team
+/docs/decisions/                @platform-team
+
+# Deployment and infrastructure.
+/deploy/                        @platform-team
+
+# CI, including the config validation gate.
+/.github/                       @platform-team
+
+# Later: per-application entries so app teams can review their own route file alongside the
+# platform team. One file per application (spec §4.1) exists partly to keep this door open.
+# /config/routes/hr-portal.yaml   @platform-team @hr-platform-team

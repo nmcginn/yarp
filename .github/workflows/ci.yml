@@ -1,0 +1,61 @@
+name: CI
+
+# Build, test, and style gate.
+#
+# The repository is in Phase 0: src/ and tests/ do not exist yet. Each step is guarded so the
+# workflow is green on a docs-only repo and starts doing real work the moment Phase 1 lands.
+# Remove the guards once the solution exists.
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for a solution
+        id: solution
+        run: |
+          if ls *.sln *.slnx >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No solution yet (Phase 0). Skipping build and test."
+          fi
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.solution.outputs.exists == 'true'
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        if: steps.solution.outputs.exists == 'true'
+        run: dotnet restore
+
+      - name: Build
+        if: steps.solution.outputs.exists == 'true'
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Format check
+        if: steps.solution.outputs.exists == 'true'
+        run: dotnet format --no-restore --verify-no-changes
+
+      # Integration tests use Testcontainers for Redis; ubuntu-latest runners provide Docker.
+      - name: Test
+        if: steps.solution.outputs.exists == 'true'
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=results.trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.solution.outputs.exists == 'true'
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
+          if-no-files-found: ignore
