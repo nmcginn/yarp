@@ -1,0 +1,17 @@
+application: app
+owner: team
+routes:
+  - routeId: app
+    match:
+      hosts: [app.corp.example.com]
+      path: "{**catch-all}"
+    clusterId: app-svc
+    authorizationPolicy: anonymous
+    transforms:
+      - RequestHeader: X-Forwarded-For
+clusters:
+  - clusterId: app-svc
+    destinations:
+      primary:
+        address: http://app.app.svc.cluster.local/
+    loadBalancingPolicy: RoundRobin

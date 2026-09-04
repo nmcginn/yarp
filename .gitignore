@@ -55,3 +55,7 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Helm chart config staged from config/ by deploy/helm/stage-config.sh (the source of truth is config/)
+deploy/helm/proxy/config/routes/*.yaml
+deploy/helm/proxy/config/environment.yaml

@@ -1,0 +1,14 @@
+application: b
+owner: team
+routes:
+  - routeId: shared
+    match:
+      hosts: [b.corp.example.com]
+      path: "{**catch-all}"
+    clusterId: shared-svc
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: shared-svc
+    destinations:
+      primary:
+        address: http://b.b.svc.cluster.local/

@@ -1,0 +1,72 @@
+# Deployment values (spec §10). Route configuration is NOT here — it is staged from config/routes/
+# into this chart's config/ directory by deploy/helm/stage-config.sh and rendered into a ConfigMap.
+
+image:
+  repository: ghcr.io/nmcginn/yarp
+  tag: ""            # set by CI to the git SHA; defaults to the chart appVersion
+  pullPolicy: IfNotPresent
+
+# Minimum 3 replicas, PDB minAvailable 2, rolling updates with maxUnavailable 0 (spec §10).
+replicaCount: 3
+
+podDisruptionBudget:
+  minAvailable: 2
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  # Spec §10 also asks for active-request-count scaling. That needs a custom metrics adapter, which
+  # is not in place yet; CPU alone until it is.
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+serviceAccount:
+  create: true
+  # IRSA role for S3/KMS (Phase 3) and CloudWatch Logs (Phase 4).
+  annotations: {}
+  #  eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/corp-identity-proxy
+
+# Data plane Service (port 8080). This is the ONLY Service the ALB may target.
+service:
+  type: ClusterIP
+  port: 8080
+
+# Status UI Service (port 8081). Internal ClusterIP only (spec §2, security control 7).
+statusService:
+  port: 8081
+
+# Health/readiness/metrics (port 8082). Not exposed as a Service; probed by kubelet and scraped by
+# Prometheus via pod annotations.
+ops:
+  port: 8082
+
+# ALB via the AWS Load Balancer Controller. The Ingress references the data plane Service only;
+# deploy/helm/verify-render.py fails the build if any other port ends up on it.
+ingress:
+  enabled: false
+  className: alb
+  hosts: []
+  #  - "*.corp.example.com"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/healthcheck-port: "8082"
+    alb.ingress.kubernetes.io/healthcheck-path: /health/ready
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8082"
+  prometheus.io/path: /metrics
+
+# Serilog minimum level for application logs (stdout). Audit events are a separate stream (Phase 4).
+logging:
+  minimumLevel: Information

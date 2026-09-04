@@ -16,7 +16,7 @@ destinationAllowlist:
   cidrs: []
 
 # Phase 3. OIDC / cookie authentication.
-authentication:
+# authentication:
   # authority: https://idp.corp.example.com/realms/corp
   # clientId: corp-identity-proxy
   # Cookie domain. Assumes a shared parent domain (spec §5.2.3, open question 1).

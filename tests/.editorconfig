@@ -1,0 +1,6 @@
+# Test projects only. Inherits the repository .editorconfig.
+root = false
+
+[*.cs]
+# Test names read as sentences: Duplicate_routeId_is_rejected. The underscore rule is for APIs.
+dotnet_diagnostic.CA1707.severity = none

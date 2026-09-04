@@ -1,0 +1,73 @@
+name: Deploy
+
+# The merge-to-main pipeline of spec §10: validate config, render it into the chart, deploy with
+# Helm. The checksum annotation means a config-only change still rolls the pods (ADR 0002), and a
+# pod with invalid config never becomes ready, so a bad ConfigMap stalls the rollout with old pods
+# still serving.
+#
+# Inert until the repository variable DEPLOY_ENABLED is "true" and the secrets below exist:
+#   AWS_DEPLOY_ROLE_ARN   IAM role assumed via GitHub OIDC, allowed to update the EKS cluster
+#   EKS_CLUSTER_NAME      the dev cluster
+# Production deploys are a manual dispatch with environment=prod.
+
+on:
+  workflow_run:
+    workflows: [Publish image]
+    types: [completed]
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Helm upgrade (${{ inputs.environment || 'dev' }})
+    if: vars.DEPLOY_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    env:
+      TARGET_ENV: ${{ inputs.environment || 'dev' }}
+      IMAGE_TAG: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.IMAGE_TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Step 2: the same validation the proxy runs at startup.
+      - name: Validate config
+        run: dotnet run --project tools/ConfigValidator --configuration Release -- config/routes --environments config/environments
+
+      # Step 3: render config/routes/*.yaml into the ConfigMap and verify the manifests.
+      - uses: azure/setup-helm@v4
+      - name: Stage and verify chart
+        run: |
+          deploy/helm/stage-config.sh "$TARGET_ENV"
+          helm template proxy deploy/helm/proxy --set image.tag="$IMAGE_TAG" | python3 deploy/helm/verify-render.py
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name "${{ secrets.EKS_CLUSTER_NAME }}"
+
+      # Step 5: helm upgrade. --atomic rolls back if the new pods never become ready.
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install proxy deploy/helm/proxy \
+            --namespace proxy --create-namespace \
+            --set image.tag="$IMAGE_TAG" \
+            --wait --atomic --timeout 10m

@@ -18,7 +18,7 @@ Copy-paste starting point: [`docs/templates/route.yaml`](../../docs/templates/ro
 Validate locally — the same code CI and the proxy run:
 
 ```bash
-dotnet run --project tools/ConfigValidator -- config/routes
+dotnet run --project tools/ConfigValidator
 ```
 
 Rollback is `git revert` on the PR.

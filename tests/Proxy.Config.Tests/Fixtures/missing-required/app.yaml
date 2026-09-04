@@ -1,0 +1,10 @@
+application: app
+routes:
+  - routeId: app
+    match:
+      hosts: [app.corp.example.com]
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: app-svc
+    destinations:
+      primary: {}

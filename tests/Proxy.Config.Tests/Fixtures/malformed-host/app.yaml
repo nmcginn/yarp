@@ -1,0 +1,14 @@
+application: app
+owner: team
+routes:
+  - routeId: app
+    match:
+      hosts: ["https://app.corp.example.com/path", "app.corp.example.com:8080"]
+      path: "{**catch-all}"
+    clusterId: app-svc
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: app-svc
+    destinations:
+      primary:
+        address: http://app.app.svc.cluster.local/

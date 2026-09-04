@@ -1,0 +1,6 @@
+apiVersion: v2
+name: corp-identity-proxy
+description: Identity-aware reverse proxy (YARP). One image, one Deployment, three listeners.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

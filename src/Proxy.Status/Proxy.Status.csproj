@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Proxy.Status</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Phase 5: read-only status endpoints and Razor Pages on port 8081 (spec §7). -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

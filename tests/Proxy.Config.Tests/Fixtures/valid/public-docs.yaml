@@ -1,0 +1,25 @@
+application: public-docs
+owner: docs-team
+routes:
+  - routeId: public-docs
+    match:
+      hosts: [docs.corp.example.com, "*.docs.corp.example.com"]
+      path: "{**catch-all}"
+    clusterId: public-docs-svc
+    authorizationPolicy: anonymous
+    caching:
+      enabled: true
+  - routeId: public-docs-api
+    match:
+      hosts: [docs.corp.example.com]
+      path: "/api/{**rest}"
+    clusterId: public-docs-svc
+    authorizationPolicy: anonymous
+
+clusters:
+  - clusterId: public-docs-svc
+    destinations:
+      primary:
+        address: http://docs.docs.svc.cluster.local:8080/
+      secondary:
+        address: http://docs-2.docs.svc.cluster.local:8080/
